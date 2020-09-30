@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 """Synthetize sentences into speech."""
 __author__ = 'Erdene-Ochir Tuguldur'
 
@@ -16,8 +16,11 @@ from audio import save_to_wav
 from utils import get_last_checkpoint_file_name, load_checkpoint, save_to_png
 
 parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-parser.add_argument("--dataset", required=True, choices=['ljspeech', 'mbspeech'], help='dataset name')
+parser.add_argument("--dataset", required=True, choices=['ljspeech', 'mbspeech', 'swara', 'swara_test'], help='dataset name')
 args = parser.parse_args()
+speaker2ix = dict(zip(hp.speaker_list, range(len(hp.speaker_list))))
+
+os.environ["CUDA_VISIBLE_DEVICES"]="3"
 
 if args.dataset == 'ljspeech':
     from datasets.lj_speech import vocab, get_test_data
@@ -44,7 +47,31 @@ if args.dataset == 'ljspeech':
         "The salt breeze came across from the sea.",
         "The girl at the booth sold fifty bonds."
     ]
-else:
+elif args.dataset == 'swara':
+    from datasets.swara import vocab, get_test_data, get_speaker_data
+
+    spk = ['BAS', 'BEA', 'CAU', 'DCS', 'DDM', 'EME', 'FDS', 'HTM', 'IPS', 'MARIA', 'PCS',
+     'PMM', 'PSS', 'RMS', 'SAM', 'SDS', 'SGS', 'TSS']
+    SENTENCES = [
+        "Ana are mere.|"+sp for sp in spk]
+        # "Ana are mere.|EME",
+        # "de asemenea contează și dacă imobilul este la stradă sau nu.|DCS",
+        # "Se așteaptă ca acest mânz să fie unul dintre cele mai importante exemplare din rasa sa, din punct de vedere genetic."
+    #]
+elif args.dataset == 'swara_test':
+    from datasets.swara_test import vocab, get_test_data
+
+    spk = ['BAS', 'BEA', 'CAU', 'DCS', 'DDM', 'EME', 'FDS', 'HTM', 'IPS', 'MARIA', 'PCS',
+           'PMM', 'PSS', 'RMS', 'SAM', 'SDS', 'SGS', 'TSS']
+    SENTENCES = [
+        "ana are mere și pere.|" + sp for sp in spk]
+        # "ana are mere.|SAM",
+        # "cercetătorii spun că persoanele care nu au vrut să recunoască simptomele s-ar fi temut.|IPS",
+        # "din pacienții covid au mințit că nu au simptome care nu au vrut să recunoască simptomele.|SAM",
+        # "De asemenea contează și dacă imobilul este la stradă sau nu.|FDS",
+    #     "de aceea spune medicul autoritățile ar trebui să schimbe tonul discuțiilor despre coronavirus.|PSS"  # ,
+    # ]
+elif args.dataset == 'mbspeech':
     from datasets.mb_speech import vocab, get_test_data
 
     SENTENCES = [
@@ -63,6 +90,7 @@ else:
 torch.set_grad_enabled(False)
 
 text2mel = Text2Mel(vocab).eval()
+text2mel = text2mel.cuda()
 last_checkpoint_file_name = get_last_checkpoint_file_name(os.path.join(hp.logdir, '%s-text2mel' % args.dataset))
 # last_checkpoint_file_name = 'logdir/%s-text2mel/step-020K.pth' % args.dataset
 if last_checkpoint_file_name:
@@ -73,6 +101,7 @@ else:
     sys.exit(1)
 
 ssrn = SSRN().eval()
+ssrn = ssrn.cuda()
 last_checkpoint_file_name = get_last_checkpoint_file_name(os.path.join(hp.logdir, '%s-ssrn' % args.dataset))
 # last_checkpoint_file_name = 'logdir/%s-ssrn/step-005K.pth' % args.dataset
 if last_checkpoint_file_name:
@@ -84,16 +113,33 @@ else:
 
 # synthetize by one by one because there is a batch processing bug!
 for i in range(len(SENTENCES)):
-    sentences = [SENTENCES[i]]
 
-    max_N = len(SENTENCES[i])
+    sentence = SENTENCES[i].split("|")[0]
+    speaker = SENTENCES[i].split("|")[1]
+    sentences = [sentence]
+
+    speakers = [speaker]
+    print (speaker)
+    speaker_ix = [speaker2ix[speaker]]
+    speakers = [speaker_ix]
+    print (speaker2ix)
+    print (speakers)
+
+    max_N = len(sentence)
     L = torch.from_numpy(get_test_data(sentences, max_N))
     zeros = torch.from_numpy(np.zeros((1, hp.n_mels, 1), np.float32))
     Y = zeros
     A = None
 
+    speakers = torch.from_numpy(np.array(speakers))
+
+    speakers = speakers.cuda()
+    L = L.cuda()
+    Y = Y.cuda()
+    zeros = zeros.cuda()
+
     for t in tqdm(range(hp.max_T)):
-        _, Y_t, A = text2mel(L, Y, monotonic_attention=True)
+        _, Y_t, A = text2mel(L, Y, speakers, monotonic_attention=True)
         Y = torch.cat((zeros, Y_t), -1)
         _, attention = torch.max(A[0, :, -1], 0)
         attention = attention.item()

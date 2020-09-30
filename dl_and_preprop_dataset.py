@@ -20,9 +20,10 @@ from audio import preprocess
 from utils import download_file
 from datasets.mb_speech import MBSpeech
 from datasets.lj_speech import LJSpeech
+from datasets.swara import SWARA
 
 parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-parser.add_argument("--dataset", required=True, choices=['ljspeech', 'mbspeech'], help='dataset name')
+parser.add_argument("--dataset", required=True, choices=['ljspeech', 'mbspeech', 'swara'], help='dataset name')
 args = parser.parse_args()
 
 if args.dataset == 'ljspeech':
@@ -160,3 +161,19 @@ elif args.dataset == 'mbspeech':
     print("pre processing...")
     mb_speech = MBSpeech([])
     preprocess(dataset_path, mb_speech)
+
+elif args.dataset == 'swara':
+    dataset_file_name = 'swara'
+    datasets_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'datasets')
+    dataset_path = os.path.join(datasets_path, hp.data_path)
+
+    if os.path.isdir(dataset_path) and False:
+        print("swara dataset folder already exists")
+        sys.exit(0)
+    else:
+        dataset_file_path = os.path.join(datasets_path, dataset_file_name)
+
+        # pre process
+        print("pre processing...")
+        swara = SWARA([])
+        preprocess(dataset_path, swara)

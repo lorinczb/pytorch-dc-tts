@@ -18,13 +18,20 @@ from utils import get_last_checkpoint_file_name, load_checkpoint, save_checkpoin
 from datasets.data_loader import SSRNDataLoader
 
 parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-parser.add_argument("--dataset", required=True, choices=['ljspeech', 'mbspeech'], help='dataset name')
+parser.add_argument("--dataset", required=True, choices=['ljspeech', 'mbspeech', 'swara', 'swara_test'], help='dataset name')
 args = parser.parse_args()
 
 if args.dataset == 'ljspeech':
     from datasets.lj_speech import LJSpeech as SpeechDataset
+elif args.dataset == 'mbspeech':
+    from datasets.mb_speech import vocab, MBSpeech as SpeechDataset
+elif args.dataset == 'swara':
+    from datasets.swara import vocab, SWARA as SpeechDataset
+elif args.dataset == 'swara_test':
+    from datasets.swara_test import vocab, SWARA as SpeechDataset
 else:
-    from datasets.mb_speech import MBSpeech as SpeechDataset
+    print('No such dataset')
+    sys.exit(1)
 
 use_gpu = torch.cuda.is_available()
 print('use_gpu', use_gpu)

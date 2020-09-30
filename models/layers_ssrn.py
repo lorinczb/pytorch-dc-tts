@@ -6,7 +6,6 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 from hparams import HParams as hp
-import sys
 
 
 class LayerNorm(nn.LayerNorm):
@@ -40,38 +39,18 @@ class D(nn.Module):
         elif weight_init == 'xavier':
             nn.init.xavier_uniform_(self.deconv.weight, nn.init.calculate_gain(nonlinearity))
 
-    def forward(self, inp, output_size=None):
-        x = inp[0]
-        speaker_codes = inp[1]
+    def forward(self, x, output_size=None):
         y = self.deconv(x, output_size=output_size)
         if hasattr(self, 'layer_norm'):
             y = self.layer_norm(y)
         y = F.dropout(y, p=hp.dropout_rate, training=self.training, inplace=True)
         if self.nonlinearity == 'relu':
             y = F.relu(y, inplace=True)
-        return (y, speaker_codes)
-
-
-class LCC(nn.Module):
-    def __init__(self, num_embeddings, embedding_dim):
-        super(LCC, self).__init__()
-        self.embedding = nn.Embedding(num_embeddings, embedding_dim, padding_idx=0)
-
-    def forward(self, x):
-        inp = x[0]
-
-        speaker_codes = x[1]
-        lcc_gate = self.embedding(speaker_codes)
-        lcc_gate = torch.sigmoid(lcc_gate)  # -> 0.5 after sigmoid
-        lcc_gate = lcc_gate.permute(0, 2, 1)
-
-        inp = lcc_gate * inp
-
-        return inp
+        return y
 
 
 class C(nn.Module):
-    def __init__(self, in_channels, out_channels, kernel_size, dilation, use_speaker_code=True, causal=False, weight_init='none', normalization='weight', nonlinearity='linear'):
+    def __init__(self, in_channels, out_channels, kernel_size, dilation, causal=False, weight_init='none', normalization='weight', nonlinearity='linear'):
         """1D convolution.
         The argument 'causal' indicates whether the causal convolution should be used or not.
         """
@@ -97,22 +76,10 @@ class C(nn.Module):
         elif weight_init == 'xavier':
             nn.init.xavier_uniform_(self.conv.weight, nn.init.calculate_gain(nonlinearity))
 
-        self.use_speaker_code = use_speaker_code
-        self.nspeakers = 0
-        if 'learn_channel_contributions' in hp.multispeaker:
-            self.lcc = LCC(hp.nspeakers, out_channels) # hp.speaker_embedding_size
-            self.nspeakers = hp.nspeakers
-
-    def forward(self, inp):
-
-        # as input we receive a tuple containing x at position 0 and the speaker codes at position 1
-        x = inp[0]
-        speaker_codes = inp[1]
-
+    def forward(self, x):
         y = self.conv(x)
         padding = self.padding
         if self.causal and padding > 0:
-
             y = y[:, :, :-padding]
 
         if hasattr(self, 'layer_norm'):
@@ -120,12 +87,7 @@ class C(nn.Module):
         y = F.dropout(y, p=hp.dropout_rate, training=self.training, inplace=True)
         if self.nonlinearity == 'relu':
             y = F.relu(y, inplace=True)
-
-        if self.nspeakers > 0 and self.use_speaker_code:
-            y = self.lcc((y, speaker_codes))
-
-        # both the y output and speaker code needs to be returned as a tuple
-        return (y, speaker_codes)
+        return y
 
 
 class E(nn.Module):
@@ -151,23 +113,12 @@ class HighwayBlock(nn.Module):
         self.d = d
         self.C = C(in_channels=d, out_channels=2 * d, kernel_size=k, dilation=delta, causal=causal, weight_init=weight_init, normalization=normalization)
 
-        self.nspeakers = 0
-        if 'learn_channel_contributions' in hp.multispeaker:
-            self.lcc = LCC(hp.nspeakers, d)  # hp.speaker_embedding_size
-            self.nspeakers = hp.nspeakers
-
-    def forward(self, inp):
-        x = inp[0]
-        speaker_codes = inp[1]
-        L, _ = self.C(inp)
+    def forward(self, x):
+        L = self.C(x)
         H1 = L[:, :self.d, :]
         H2 = L[:, self.d:, :]
         sigH1 = torch.sigmoid(H1)
-
-        if self.nspeakers > 0:
-            H2 = self.lcc((H2, speaker_codes))
-
-        return (sigH1 * H2 + (1 - sigH1) * x, speaker_codes)
+        return sigH1 * H2 + (1 - sigH1) * x
 
 
 class GatedConvBlock(nn.Module):
@@ -185,11 +136,9 @@ class GatedConvBlock(nn.Module):
                    weight_init=weight_init, normalization=normalization)
         self.glu = nn.GLU(dim=1)
 
-    def forward(self, inp):
-        x = inp[0]
-        speaker_codes = inp[1]
-        L, _ = self.C(inp)
-        return (self.glu(L) + x, speaker_codes)
+    def forward(self, x):
+        L = self.C(x)
+        return self.glu(L) + x
 
 
 class ResidualBlock(nn.Module):

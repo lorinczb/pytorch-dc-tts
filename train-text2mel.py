@@ -60,7 +60,6 @@ global_step = 0
 logger = Logger(args.dataset, 'text2mel')
 
 
-
 # load the last checkpoint if exists
 last_checkpoint_file_name = get_last_checkpoint_file_name(logger.logdir)
 if last_checkpoint_file_name:
@@ -136,13 +135,11 @@ def train(train_epoch, phase='train'):
         masks = gates.reshape(B, 1, T).float()
         att_loss = (A * W * masks).mean()
 
+        # This is just a trial to add additional speaker loss, not used for now        
         if hp.use_additional_speaker_loss:
             sc, lab, _ = s.evaluateY(Y, speakers, test_path=hp.test_path, eval_frames=300)
-            # sc = np.log(np.absolute(sc)) - not functioning
-            # sc = np.asarray(sc) * 1e+4
             result = tuneThresholdfromScore(sc, lab, [1, 0.1])
             eer_loss = result[1]/100
-            f.write("train_epoch: %d, it: %d, eer_loss: %f \n" % (train_epoch, it, eer_loss))
         else:
             eer_loss = 0
 
@@ -186,9 +183,6 @@ def train(train_epoch, phase='train'):
     epoch_l1_loss = running_l1_loss / it
     epoch_att_loss = running_att_loss / it
     epoch_eer_loss = running_eer_loss / it
-
-    if hp.use_additional_speaker_loss:
-        f.write('***************** Total epoch eer loss: %f *****************\n' % (epoch_eer_loss))
 
     logger.log_epoch(phase, global_step, {'loss_l1': epoch_l1_loss, 'loss_att': epoch_att_loss, 'loss_eer': epoch_eer_loss})
 
