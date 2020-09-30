@@ -265,7 +265,7 @@ class Text2Mel(nn.Module):
                 for t in range(T):
                     _, n = torch.max(A[i, :, t], 0)
                     # print (n, prva, n-prva)
-                    if not (-1 <= n - prva <= 3) and 0:
+                    if not (-1 <= n - prva <= 3):
                         A[i, :, t] = -2 ** 20  # some small numbers
                         A[i, min(N - 1, prva + 1), t] = 1
                     _, prva = torch.max(A[i, :, t], 0)
