@@ -8,9 +8,9 @@ class HParams:
     disable_progress_bar = False  # set True if you don't want the progress bar in the console
 
     logdir = "logdir"  # log dir where the checkpoints and tensorboard files are saved
-    data_path = '/media/DATA/wav_16k/'
-    mels_path = '/media/DATA/wav_16k/'
-    mags_path = '/media/DATA/wav_16k/'
+    data_path = '/media/DATA/SWARA_DATA/SWARA_wav_16k_new_trim/'
+    mels_path = '/media/DATA/SWARA_DATA/SWARA_wav_16k_new_trim/'
+    mags_path = '/media/DATA/SWARA_DATA/SWARA_wav_16k_new_trim/'
 
     # audio.py options, these values are from https://github.com/Kyubyong/dc_tts/blob/master/hyperparams.py
     reduction_rate = 4  # melspectrogram reduction rate, don't change because SSRN is using this rate
@@ -51,24 +51,25 @@ class HParams:
     ssrn_basic_block = 'residual'  # 'highway', 'gated_conv' or 'residual'
 
     # multispeaker params
-    # multispeaker = [] # text_encoder_input, text_encoder_towards_end, audio_decoder_input, ssrn_input, audio_encoder_input
-
-    # multispeaker = ['learn_channel_contributions']
+    # possible values: text_encoder_input, text_encoder_towards_end, audio_decoder_input, ssrn_input, audio_encoder_input
+    # multispeaker = []
+    multispeaker = ['learn_channel_contributions']
     # multispeaker = ['text_encoder_input', 'text_encoder_towards_end', 'audio_encoder_input', 'audio_decoder_input']
-    multispeaker = ['text_encoder_input', 'audio_encoder_input', 'audio_decoder_input']
+    # multispeaker = ['text_encoder_input', 'audio_encoder_input', 'audio_decoder_input']
+    # multispeaker = ['audio_encoder_input', 'audio_decoder_input']
     speaker_list = ['<PADDING>'] + ['BAS', 'BEA', 'CAU', 'DCS', 'DDM', 'EME', 'FDS', 'HTM', 'IPS', 'MARIA', 'PCS',
-                                    'PMM', 'PSS', 'RMS', 'SAM', 'SDS', 'SGS', 'TSS']
+                                    'PMM', 'PSS', 'RMS', 'SAM', 'SDS', 'SGS', 'TIM', 'TSS']
     nspeakers = len(speaker_list) + 10
     speaker_embedding_size = 128
 
     speaker2ix = dict(zip(speaker_list, range(len(speaker_list))))
 
     # added for speaker recognition
-    use_additional_speaker_loss = 0
-    # speaker_recognition_model_path = 'pretrained_voxceleb_model/model_checkpoints/model000000070.model'
-    # embedding_files = '/embeddings/'
-    # test_file_list = 'meta/swara_list.txt'
-    # test_path = '/media/DATA/SWARA_DATA/SWARA_wav_16k/'
+    use_additional_speaker_loss = 1
+    speaker_recognition_model_path = 'pretrained_voxceleb_model/model_checkpoints/model000000070.model'
+    embedding_files = '/home/sintero-gpu1/work/Speaker-Recognition/voxceleb_trainer/embeddings2/'
+    test_file_list = 'meta/swara_list.txt'
+    test_path = '/media/DATA/SWARA_DATA/SWARA_wav_16k_new_trim/'
 
-    # same_spk_samples = 3
-    # other_spk_samples = 1
+    same_spk_samples = 3
+    other_spk_samples = 1

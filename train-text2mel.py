@@ -15,7 +15,7 @@ import torch.nn.functional as F
 from models import Text2Mel
 from hparams import HParams as hp
 from logger import Logger
-from utils import get_last_checkpoint_file_name, load_checkpoint, save_checkpoint
+from utils import get_last_checkpoint_file_name, load_checkpoint, load_and_transform_checkpoint, save_checkpoint
 from datasets.data_loader import Text2MelDataLoader
 from pretrained_voxceleb_model.ResNetSE34L import *
 from pretrained_voxceleb_model.SpeakerNet import SpeakerNet
@@ -37,7 +37,7 @@ else:
     print('No such dataset')
     sys.exit(1)
 
-# os.environ["CUDA_VISIBLE_DEVICES"]="0"
+os.environ["CUDA_VISIBLE_DEVICES"]="3"
 
 use_gpu = torch.cuda.is_available()
 print('use_gpu', use_gpu)
@@ -45,9 +45,9 @@ if use_gpu:
     torch.backends.cudnn.benchmark = True
 
 train_data_loader = Text2MelDataLoader(text2mel_dataset=SpeechDataset(['texts', 'mels', 'mel_gates', 'speakers']),
-                                       batch_size=64, mode='train')
+                                       batch_size=32, mode='train')
 valid_data_loader = Text2MelDataLoader(text2mel_dataset=SpeechDataset(['texts', 'mels', 'mel_gates', 'speakers']),
-                                       batch_size=64, mode='valid')
+                                       batch_size=32, mode='valid')
 
 text2mel = Text2Mel(vocab).cuda()
 
@@ -64,7 +64,9 @@ logger = Logger(args.dataset, 'text2mel')
 last_checkpoint_file_name = get_last_checkpoint_file_name(logger.logdir)
 if last_checkpoint_file_name:
     print("loading the last checkpoint: %s" % last_checkpoint_file_name)
-    start_epoch, global_step = load_checkpoint(last_checkpoint_file_name, text2mel, optimizer)
+    # this will load a pretrained model and use the weights of layers that exist in the current model
+    start_epoch, global_step = load_and_transform_checkpoint(last_checkpoint_file_name, text2mel, optimizer)
+    # start_epoch, global_step = load_checkpoint(last_checkpoint_file_name, text2mel, optimizer)
 
 # adding speaker recognition model load and loss calculation
 if hp.use_additional_speaker_loss:
@@ -73,6 +75,7 @@ if hp.use_additional_speaker_loss:
     s.eval()
     s = s.cuda()
     f = open(logger.logdir + "/eer_log.txt", "a")
+
 
 def get_lr():
     return optimizer.param_groups[0]['lr']
@@ -135,11 +138,13 @@ def train(train_epoch, phase='train'):
         masks = gates.reshape(B, 1, T).float()
         att_loss = (A * W * masks).mean()
 
-        # This is just a trial to add additional speaker loss, not used for now        
         if hp.use_additional_speaker_loss:
-            sc, lab, _ = s.evaluateY(Y, speakers, test_path=hp.test_path, eval_frames=300)
+            y_embedding = s.__S__.forward(Y)
+            sc, lab, _ = s.evaluateY(y_embedding, speakers)
+            # print("scores: ", sc)
             result = tuneThresholdfromScore(sc, lab, [1, 0.1])
             eer_loss = result[1]/100
+            f.write("train_epoch: %d, it: %d, eer_loss: %f \n" % (train_epoch, it, eer_loss))
         else:
             eer_loss = 0
 
@@ -163,8 +168,8 @@ def train(train_epoch, phase='train'):
         running_l1_loss += l1_loss
         running_att_loss += att_loss
 
-        eer_loss = 0
-        running_eer_loss += eer_loss
+        if hp.use_additional_speaker_loss:
+            running_eer_loss += eer_loss
 
         if phase == 'train':
             # update the progress bar
@@ -183,6 +188,9 @@ def train(train_epoch, phase='train'):
     epoch_l1_loss = running_l1_loss / it
     epoch_att_loss = running_att_loss / it
     epoch_eer_loss = running_eer_loss / it
+
+    if hp.use_additional_speaker_loss:
+        f.write('***************** Total epoch eer loss: %f *****************\n' % (epoch_eer_loss))
 
     logger.log_epoch(phase, global_step, {'loss_l1': epoch_l1_loss, 'loss_att': epoch_att_loss, 'loss_eer': epoch_eer_loss})
 

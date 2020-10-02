@@ -49,6 +49,30 @@ def save_checkpoint(logdir, epoch, global_step, model, optimizer):
     del checkpoint
 
 
+# use this function if a pretrained model is loaded that has a modified structure
+# it will only load the weights for the layers that exist in the pretrained model
+def load_and_transform_checkpoint(checkpoint_file_name, model, optimizer):
+    """Loads the checkpoint into the given model and optimizer."""
+    checkpoint = torch.load(checkpoint_file_name)
+
+    pretrained_dict = checkpoint['state_dict']
+    model_dict = model.state_dict()
+
+    pretrained_dict = {k: v for k, v in pretrained_dict.items() if
+                        k in model_dict and v.size() == model_dict[k].size()
+                       }
+
+    model_dict.update(pretrained_dict)
+    model.load_state_dict(model_dict)
+
+    model.float()
+    start_epoch = checkpoint.get('epoch', 0)
+    global_step = checkpoint.get('global_step', 0)
+    del checkpoint
+    print("loaded checkpoint epoch=%d step=%d" % (start_epoch, global_step))
+    return start_epoch, global_step
+
+
 def download_file(url, file_path):
     """Downloads a file from the given URL."""
     print("downloading %s..." % url)
@@ -70,4 +94,9 @@ def save_to_png(file_name, array):
     """Save the given numpy array as a PNG file."""
     # from skimage._shared._warnings import expected_warnings
     # with expected_warnings(['precision']):
-    imsave(file_name, img_as_ubyte(array))
+    #imsave(file_name, img_as_ubyte(array))
+    import matplotlib.pylab as pl
+    import numpy as np
+    pl.imshow(np.flipud(array))
+    #pl.show()
+    pl.savefig(file_name)
