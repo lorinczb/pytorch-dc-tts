@@ -38,7 +38,7 @@ class HParams:
 
     # Text2Mel network options
     text2mel_lr = 0.005  # learning rate
-    text2mel_max_iteration = 500000  # max train step
+    text2mel_max_iteration = 800000  # max train step
     text2mel_weight_init = 'none'  # 'kaiming', 'xavier' or 'none'
     text2mel_normalization = 'layer'  # 'layer', 'weight' or 'none'
     text2mel_basic_block = 'highway'  # 'highway', 'gated_conv' or 'residual'
@@ -53,10 +53,10 @@ class HParams:
     # multispeaker params
     # possible values: text_encoder_input, text_encoder_towards_end, audio_decoder_input, ssrn_input, audio_encoder_input
     # multispeaker = []
-    multispeaker = ['learn_channel_contributions']
+    # multispeaker = ['learn_channel_contributions']
     # multispeaker = ['text_encoder_input', 'text_encoder_towards_end', 'audio_encoder_input', 'audio_decoder_input']
     # multispeaker = ['text_encoder_input', 'audio_encoder_input', 'audio_decoder_input']
-    # multispeaker = ['audio_encoder_input', 'audio_decoder_input']
+    multispeaker = ['audio_encoder_input', 'audio_decoder_input']
     speaker_list = ['<PADDING>'] + ['BAS', 'BEA', 'CAU', 'DCS', 'DDM', 'EME', 'FDS', 'HTM', 'IPS', 'MARIA', 'PCS',
                                     'PMM', 'PSS', 'RMS', 'SAM', 'SDS', 'SGS', 'TIM', 'TSS']
     nspeakers = len(speaker_list) + 10
@@ -66,10 +66,14 @@ class HParams:
 
     # added for speaker recognition
     use_additional_speaker_loss = 1
-    speaker_recognition_model_path = 'pretrained_voxceleb_model/model_checkpoints/model000000070.model'
-    embedding_files = '/home/sintero-gpu1/work/Speaker-Recognition/voxceleb_trainer/embeddings2/'
+    speaker_loss_type = 'Cosine_Similarity'  # 'Cosine_Similarity', 'Equal_Error_Rate'
+    speaker_recognition_model_path = 'pretrained_voxceleb_model/model_checkpoints/model000000500.model'
+    embedding_files = '/home/sintero-gpu1/work/Speaker-Recognition/voxceleb_trainer/embeddings_new/'
     test_file_list = 'meta/swara_list.txt'
     test_path = '/media/DATA/SWARA_DATA/SWARA_wav_16k_new_trim/'
 
-    same_spk_samples = 3
+    same_spk_samples = 12
     other_spk_samples = 1
+
+    # temp settings
+    Y_save_path = 'Y_files/'

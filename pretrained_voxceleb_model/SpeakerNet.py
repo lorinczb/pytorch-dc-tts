@@ -39,18 +39,22 @@ def initialize_validation_file_list(listfilename):
 
 class SpeakerNet(nn.Module):
 
-    def __init__(self, lr = 0.0001, margin = 1, scale = 1, hard_rank = 0, hard_prob = 0, model="ResNetSE34L", nOut = 512, nSpeakers = 1000, optimizer = 'adam', encoder_type = 'SAP', normalize = True, trainfunc='softmax', n_mels=40, log_input=True, **kwargs):
+    # def __init__(self, lr = 0.0001, margin = 1, scale = 1, hard_rank = 0, hard_prob = 0, model="ResNetSE34L", nOut = 512, nSpeakers = 1000, optimizer = 'adam', encoder_type = 'SAP', normalize = True, trainfunc='softmax', n_mels=40, log_input=True, **kwargs):
+    def __init__(self, lr=0.001, margin=0.3, scale=30, hard_rank=10, hard_prob=0.5, model="ResNetSE34L", nOut=512,
+                     nSpeakers=18, optimizer='adam', encoder_type='SAP', normalize=True, trainfunc='softmax',
+                     n_mels=80, log_input=True, **kwargs):
         super(SpeakerNet, self).__init__();
 
         argsdict = {'nOut': nOut, 'encoder_type':encoder_type, 'nClasses':nSpeakers, 'margin':margin, 'scale':scale, 'hard_prob':hard_prob, 'hard_rank':hard_rank, 'log_input':log_input, 'n_mels':n_mels}
+        print(argsdict)
 
         SpeakerNetModel = importlib.import_module('pretrained_voxceleb_model.'+model).__getattribute__('MainModel')
-        self.__S__ = SpeakerNetModel(**argsdict).cuda();
+        self.__S__ = SpeakerNetModel(**argsdict).cuda()
 
         if optimizer == 'adam':
-            self.__optimizer__ = torch.optim.Adam(self.parameters(), lr = lr);
+            self.__optimizer__ = torch.optim.Adam(self.parameters(), lr = lr)
         elif optimizer == 'sgd':
-            self.__optimizer__ = torch.optim.SGD(self.parameters(), lr = lr, momentum = 0.9, weight_decay=5e-5);
+            self.__optimizer__ = torch.optim.SGD(self.parameters(), lr = lr, momentum = 0.9, weight_decay=5e-5)
         else:
             raise ValueError('Undefined optimizer.')
 
@@ -88,19 +92,22 @@ class SpeakerNet(nn.Module):
     # evaluate Y generated from the dc tts network
     def evaluateY(self, Y, speakers):
 
+        self.eval()
         feats = {}
         batch_length = Y.shape[0]
         lines = []
 
         for i in range(batch_length):
             speaker = speakers[i]
-            feats['Y'+str(i)] = Y[i]
+            feats['Y'+str(i)] = Y[i] # [:,:,:40]
 
             # same speakers
             speaker_item = speaker.item()
             comp_file_path = random.choices(self.test_files[speaker_item], k=hp.same_spk_samples)
             for j in range(len(comp_file_path)):
+                # print("file: ", comp_file_path[j])
                 feats[comp_file_path[j]] = numpy.load(hp.embedding_files + comp_file_path[j] + ".npy")
+                # print(feats[comp_file_path[j]].shape)
                 lines.append("1 " + "Y" + str(i) + " " + comp_file_path[j] + "\n")
 
             # other speakers
@@ -111,8 +118,16 @@ class SpeakerNet(nn.Module):
                 comp_file_path.extend(random.choices(self.test_files[spk], k=hp.other_spk_samples))
 
             for j in range(len(comp_file_path)):
+                # print("file: ", comp_file_path[j])
                 feats[comp_file_path[j]] = numpy.load(hp.embedding_files + comp_file_path[j] + ".npy")
+                # print(feats[comp_file_path[j]].shape)
                 lines.append("0 " + "Y" + str(i) + " " + comp_file_path[j] + "\n")
+
+        # lines = ['1 Y0 bas_rnd3_127', '1 Y0 bas_rnd2_371', '0 Y0 bea_rnd3_166', '0 Y0 cau_rnd2_038', '0 Y0 dcs_rnd3_031', '0 Y0 ddm_rnd2_335', '0 Y0 eme_rnd2_457', '0 Y0 fds_rnd1_014', '0 Y0 htm_rnd1_067', '0 Y0 ips_rnd2_184', '0 Y0 maria_rnd2_301', '0 Y0 pcs_rnd2_108', '0 Y0 pmm_rnd1_274', '0 Y0 pss_rnd1_044', '0 Y0 rms_rnd1_256', '0 Y0 sam_rnd2_365', '0 Y0 sds_rnd1_228', '0 Y0 sgs_rnd1_238', '0 Y0 tim_rnd2_381', '0 Y0 tss_rnd1_433']
+        # lines = ['1 Y0 fds_rnd2_432', '1 Y0 fds_rnd1_257', '0 Y0 bas_rnd2_400', '0 Y0 bea_rnd2_142', '0 Y0 cau_rnd2_120', '0 Y0 dcs_rnd3_431', '0 Y0 ddm_rnd1_090', '0 Y0 eme_rnd3_228', '0 Y0 htm_rnd1_204', '0 Y0 ips_rnd2_366', '0 Y0 maria_rnd1_018', '0 Y0 pcs_rnd2_417', '0 Y0 pmm_rnd1_353', '0 Y0 pss_rnd2_093', '0 Y0 rms_rnd2_383', '0 Y0 sam_rnd1_212', '0 Y0 sds_rnd2_199', '0 Y0 sgs_rnd2_467', '0 Y0 tim_rnd2_287', '0 Y0 tss_rnd2_371', '1 Y1 sam_rnd2_149', '1 Y1 sam_rnd2_125', '0 Y1 bas_rnd3_443', '0 Y1 bea_rnd1_446', '0 Y1 cau_rnd2_043', '0 Y1 dcs_rnd1_223', '0 Y1 ddm_rnd1_120', '0 Y1 eme_rnd3_062', '0 Y1 fds_rnd2_378', '0 Y1 htm_rnd2_317', '0 Y1 ips_rnd2_172', '0 Y1 maria_rnd1_305', '0 Y1 pcs_rnd1_478', '0 Y1 pmm_rnd1_140', '0 Y1 pss_rnd3_297', '0 Y1 rms_rnd2_461', '0 Y1 sds_rnd2_090', '0 Y1 sgs_rnd1_487', '0 Y1 tim_rnd1_379', '0 Y1 tss_rnd1_202']
+        # for i in range(len(lines)):
+        #     l, _, f = lines[i].split(" ")
+        #     feats[f] = numpy.load(hp.embedding_files + f + ".npy")
 
         # print(lines)
 
@@ -123,7 +138,7 @@ class SpeakerNet(nn.Module):
         # Read files and compute all scores
         for idx, line in enumerate(lines):
 
-            data = line.split();
+            data = line.split()
 
             ## Append random label if missing
             if len(data) == 2: data = [random.randint(0, 1)] + data
@@ -158,7 +173,7 @@ class SpeakerNet(nn.Module):
             param_group['lr'] = param_group['lr']*alpha
             learning_rate.append(param_group['lr'])
 
-        return learning_rate;
+        return learning_rate
 
 
     ## ===== ===== ===== ===== ===== ===== ===== =====
@@ -169,7 +184,6 @@ class SpeakerNet(nn.Module):
         
         torch.save(self.state_dict(), path);
 
-
     ## ===== ===== ===== ===== ===== ===== ===== =====
     ## Load parameters
     ## ===== ===== ===== ===== ===== ===== ===== =====
@@ -178,6 +192,7 @@ class SpeakerNet(nn.Module):
 
         self_state = self.state_dict()
         loaded_state = torch.load(path)
+        print("Loading parameters from: ", path)
         for name, param in loaded_state.items():
             origname = name;
             if name not in self_state:

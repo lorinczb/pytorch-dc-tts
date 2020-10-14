@@ -20,7 +20,7 @@ parser.add_argument("--dataset", required=True, choices=['ljspeech', 'mbspeech',
 args = parser.parse_args()
 speaker2ix = dict(zip(hp.speaker_list, range(len(hp.speaker_list))))
 
-os.environ["CUDA_VISIBLE_DEVICES"]="3"
+# os.environ["CUDA_VISIBLE_DEVICES"]="3"
 
 if args.dataset == 'ljspeech':
     from datasets.lj_speech import vocab, get_test_data
@@ -53,11 +53,26 @@ elif args.dataset == 'swara':
     spk = ['BAS', 'BEA', 'CAU', 'DCS', 'DDM', 'EME', 'FDS', 'HTM', 'IPS', 'MARIA', 'PCS',
      'PMM', 'PSS', 'RMS', 'SAM', 'SDS', 'SGS', 'TSS']
     SENTENCES = [
-        "Ana are mere.|"+sp for sp in spk]
+        "Se așteaptă ca acest mânz să fie unul dintre cele mai importante exemplare din rasa sa, din punct de vedere genetic.|"+sp for sp in spk]
+        # "La automatele de vândut cartele se poate achita cu numerar.|"+sp for sp in spk]
         # "Ana are mere.|EME",
-        # "de asemenea contează și dacă imobilul este la stradă sau nu.|DCS",
+        # "de asemenea contează și dacă imobilul este la stradă sau nu.|MARIA",
+        # "de aceea spune medicul autoritățile ar trebui să schimbe tonul discuțiilor despre coronavirus.|BAS",
+        # "Diaconu a explicat că a fi asimptomatic este o raritate în orice boală, dar că să mărturisești că ai simptome poate duce la stigmă socială, de aceea mulți oameni preferă să tacă și să ascundă ceea ce li se întâmplă.|SAM",
+        # "Suntem pregătiți să dăm în trafic cu călători Magistrala de metroul Drumul Taberei, Eroilor în cursul zilei de mâine|BEA"
+        # "După semnarea celor două procese verbale de recepție la terminarea lucrărilor, respectiv la punerea în funcțiune, pe data de unu septembrie, am anunțat public",
+        # "După îndeplinirea tuturor procedurilor administrative, care au mai rămas de efectuat de către beneficiar",
+        # "O altă activitate necesară constă în predarea obiectivelor de pază pe staţii şi interstaţii",
+        # "Astfel, în aceasta perioadă, operatorii de telefonie mobilă au finalizat instalarea reţelelor de comunicaţii în subteran.",
+        # "La automatele de vândut cartele se poate achita cu numerar.",
+        # "Achitarea cu card bancar urmează să se implementeze cât mai curând posibil împreună cu banca suport.",
+        # "Este necesar a se realiza o soluţie de comunicaţie stabilă care presupune atât configurarea cât şi instalarea unor echipamente şi chei de criptare.",
+        # "De asemenea se predau toate spaţiile publice de la firmele de curăţenie ale constructorului.",
+        # "Au semnat procesele-verbale în urma cărora această magistrală de metrou poate fi dată în exploatare şi, totodată, în trafic cu călători.",
+        # "Tehnologiile avansate de reproducere, inclusiv clonarea, pot salva speciile, permițându-ne să restabilim diversitatea genetică ce altfel s-ar fi pierdut în timp",
+        # "Când va crește, Kurt va fi mutat în Parcul Safari de la grădina zoologică, pentru reproducere.",
         # "Se așteaptă ca acest mânz să fie unul dintre cele mai importante exemplare din rasa sa, din punct de vedere genetic."
-    #]
+    # ]
 elif args.dataset == 'swara_test':
     from datasets.swara_test import vocab, get_test_data
 
@@ -65,11 +80,6 @@ elif args.dataset == 'swara_test':
            'PMM', 'PSS', 'RMS', 'SAM', 'SDS', 'SGS', 'TSS']
     SENTENCES = [
         "ana are mere și pere.|" + sp for sp in spk]
-        # "ana are mere.|SAM",
-        # "cercetătorii spun că persoanele care nu au vrut să recunoască simptomele s-ar fi temut.|IPS",
-        # "din pacienții covid au mințit că nu au simptome care nu au vrut să recunoască simptomele.|SAM",
-        # "De asemenea contează și dacă imobilul este la stradă sau nu.|FDS",
-    #     "de aceea spune medicul autoritățile ar trebui să schimbe tonul discuțiilor despre coronavirus.|PSS"  # ,
     # ]
 elif args.dataset == 'mbspeech':
     from datasets.mb_speech import vocab, get_test_data
@@ -155,4 +165,15 @@ for i in range(len(SENTENCES)):
     save_to_png('samples/%d-att.png' % (i + 1), A[0, :, :])
     save_to_png('samples/%d-mel.png' % (i + 1), Y[0, :, :])
     save_to_png('samples/%d-mag.png' % (i + 1), Z[0, :, :])
-    save_to_wav(Z[0, :, :].T, 'samples/%d-wav.wav' % (i + 1))
+    # import matplotlib.pyplot as plt
+    # a = self.embeddings(torch.tensor([x for x in range(10)]).cuda())
+    # fig, ax = plt.subplots()
+    # plt.imshow(A[0,:,:23])
+    # labels = [item.get_text() for item in ax.get_xticklabels()]
+    # labels=[x for x in sentence]
+    #
+    # ax.set_yticklabels(labels[::-1])
+    # plt.show()
+    # save_to_wav(Z[0, :, :].T, 'samples/%d-wav.wav' % (i + 1))
+    print('saving for speaker: ', speaker)
+    save_to_wav(Z[0, :, :].T, 'samples/%d-%s-wav.wav' % ((i + 1), speaker))
